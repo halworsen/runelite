@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.itemgoals;
+package net.runelite.client.plugins.milestones;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
@@ -41,6 +41,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.game.AsyncBufferedImage;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
@@ -49,8 +50,9 @@ import net.runelite.client.ui.components.ThinProgressBar;
 import net.runelite.client.ui.components.shadowlabel.JShadowedLabel;
 import net.runelite.client.util.ImageUtil;
 
-// Displays individual goals in the goals tab
-public class ItemGoalsGoalPanel extends JPanel
+// Displays individual milestones in the milestones tab
+@Slf4j
+public class MilestonesMilestoneCard extends JPanel
 {
 	private static final ImageIcon DELETE_ICON;
 	private static final ImageIcon DELETE_HOVER_ICON;
@@ -61,9 +63,9 @@ public class ItemGoalsGoalPanel extends JPanel
 
 	static
 	{
-		final BufferedImage deleteIcon = ImageUtil.getResourceStreamFromClass(ItemGoalsPlugin.class, "delete_icon.png");
-		final BufferedImage confirmIcon = ImageUtil.getResourceStreamFromClass(ItemGoalsPlugin.class, "confirm_icon.png");
-		final BufferedImage cancelIcon = ImageUtil.getResourceStreamFromClass(ItemGoalsPlugin.class, "cancel_icon.png");
+		final BufferedImage deleteIcon = ImageUtil.getResourceStreamFromClass(MilestonesPlugin.class, "delete_icon.png");
+		final BufferedImage confirmIcon = ImageUtil.getResourceStreamFromClass(MilestonesPlugin.class, "confirm_icon.png");
+		final BufferedImage cancelIcon = ImageUtil.getResourceStreamFromClass(MilestonesPlugin.class, "cancel_icon.png");
 
 		DELETE_ICON = new ImageIcon(deleteIcon);
 		DELETE_HOVER_ICON = new ImageIcon(ImageUtil.alphaOffset(deleteIcon, 0.50f));
@@ -87,15 +89,15 @@ public class ItemGoalsGoalPanel extends JPanel
 	private JPanel goalInfo = new JPanel();
 	private JPanel deletionContainer = new JPanel();
 
-	private ItemGoalsPlugin plugin;
-	private ItemGoal itemGoal;
+	private MilestonesCategoryManager categoryManager;
+	private Milestone milestone;
 	private ItemManager itemManager;
 
-	ItemGoalsGoalPanel(ItemGoalsPlugin plugin, ItemGoal itemGoal, ItemManager itemManager)
+	MilestonesMilestoneCard(MilestonesCategoryManager categoryManager, Milestone milestone, ItemManager itemManager)
 	{
-		this.plugin = plugin;
+		this.categoryManager = categoryManager;
 		this.itemManager = itemManager;
-		this.itemGoal = itemGoal;
+		this.milestone = milestone;
 
 		setLayout(new BorderLayout());
 		setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -122,12 +124,13 @@ public class ItemGoalsGoalPanel extends JPanel
 
 	private void populateGoalContainer()
 	{
-		final AsyncBufferedImage icon = itemManager.getImage(itemGoal.getItemID());
+		// Category manager provides the icon
+		AsyncBufferedImage icon = categoryManager.getIcon(milestone.getId());
 
 		// Goal item icon
 		JLabel itemIcon = new JLabel();
 		itemIcon.setPreferredSize(ICON_SIZE);
-		itemIcon.setToolTipText(itemGoal.getName());
+		itemIcon.setToolTipText(milestone.getName());
 		if (icon != null)
 		{
 			icon.addTo(itemIcon);
@@ -135,7 +138,7 @@ public class ItemGoalsGoalPanel extends JPanel
 
 		// Name of the goal item
 		JShadowedLabel itemName = new JShadowedLabel();
-		itemName.setText(itemGoal.getName());
+		itemName.setText(milestone.getName());
 		// Cut off longer item names
 		int h = itemName.getPreferredSize().height;
 		itemName.setPreferredSize(new Dimension(0, h));
@@ -146,7 +149,8 @@ public class ItemGoalsGoalPanel extends JPanel
 		itemProgressLabel.setFont(FontManager.getRunescapeSmallFont());
 
 		NumberFormat formatter = NumberFormat.getInstance();
-		String progressText = formatter.format(itemGoal.getProgress()) + " / " + formatter.format(itemGoal.getAmount());
+		// Progress can be negative, but I think it'd be more confusing if you dropped below 0 progress and making small progress wouldn't increase the progress beyond 0
+		String progressText = formatter.format(milestone.getProgress()) + " / " + formatter.format(milestone.getAmount());
 
 		itemProgressLabel.setText(progressText);
 		itemProgressLabel.setForeground(Color.WHITE);
@@ -156,7 +160,7 @@ public class ItemGoalsGoalPanel extends JPanel
 
 		// Progress bar
 		ThinProgressBar progressBar = new ThinProgressBar();
-		if (itemGoal.getProgress() == itemGoal.getAmount())
+		if (milestone.getProgress() == milestone.getAmount())
 		{
 			progressBar.setForeground(ColorScheme.PROGRESS_COMPLETE_COLOR);
 		}
@@ -164,8 +168,8 @@ public class ItemGoalsGoalPanel extends JPanel
 		{
 			progressBar.setForeground(ColorScheme.PROGRESS_INPROGRESS_COLOR);
 		}
-		progressBar.setMaximumValue(itemGoal.getAmount());
-		progressBar.setValue(itemGoal.getProgress());
+		progressBar.setMaximumValue(milestone.getAmount());
+		progressBar.setValue(milestone.getProgress());
 
 		// Delete button
 		JLabel deleteButton = new JLabel(DELETE_ICON);
@@ -295,6 +299,6 @@ public class ItemGoalsGoalPanel extends JPanel
 
 	private void delete()
 	{
-		plugin.removeGoal(itemGoal);
+		categoryManager.removeMilestone(milestone.getId());
 	}
 }

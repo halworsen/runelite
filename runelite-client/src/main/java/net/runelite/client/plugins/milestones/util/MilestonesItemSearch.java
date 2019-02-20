@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.itemgoals;
+package net.runelite.client.plugins.milestones.util;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -31,12 +31,12 @@ import net.runelite.api.ItemID;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemVariationMapping;
 
-// Helper class for searching all known items in the game, tradeable or not
-public class ItemGoalFullItemSearch
+// Utility class for searching all known items in the game, tradeable or not
+public class MilestonesItemSearch
 {
 	private ItemManager itemManager;
 
-	ItemGoalFullItemSearch(ItemManager itemManager)
+	public MilestonesItemSearch(ItemManager itemManager)
 	{
 		this.itemManager = itemManager;
 	}

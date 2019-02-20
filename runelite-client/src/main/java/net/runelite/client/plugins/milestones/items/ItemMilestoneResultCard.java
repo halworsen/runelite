@@ -22,9 +22,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.itemgoals;
+package net.runelite.client.plugins.milestones.items;
 
-import java.util.ArrayList;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -37,20 +36,25 @@ import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.util.Collection;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.border.EmptyBorder;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.game.AsyncBufferedImage;
+import net.runelite.client.plugins.milestones.Milestone;
+import net.runelite.client.plugins.milestones.MilestonesPlugin;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.components.ThinProgressBar;
 import net.runelite.client.ui.components.shadowlabel.JShadowedLabel;
 import net.runelite.client.util.ImageUtil;
 
-// Displays individual search results in the edit/add goal tab
-public class ItemGoalsResultPanel extends JPanel
+// Displays individual search results in the edit/add milestone tab
+@Slf4j
+public class ItemMilestoneResultCard extends JPanel
 {
 	private final Dimension ICON_SIZE = new Dimension(32, 32);
 
@@ -72,33 +76,33 @@ public class ItemGoalsResultPanel extends JPanel
 	private final JPanel resultContainer = new JPanel();
 	private final JPanel infoContainer = new JPanel();
 
-	private int itemID;
+	private int itemId;
 
 	private boolean configOpen = false;
 
-	private ItemGoalsPlugin plugin;
+	private ItemMilestoneManager categoryManager;
 	private AsyncBufferedImage icon;
 	private String name;
 	private MouseAdapter clickListener;
-	private ItemGoal connectedGoal;
+	private Milestone connectedMilestone;
 
 	static
 	{
-		final BufferedImage addIcon = ImageUtil.getResourceStreamFromClass(ItemGoalsPlugin.class, "add_icon.png");
+		final BufferedImage addIcon = ImageUtil.getResourceStreamFromClass(MilestonesPlugin.class, "add_icon.png");
 
 		ADD_ICON = new ImageIcon(addIcon);
 		ADD_HOVER_ICON = new ImageIcon(ImageUtil.alphaOffset(addIcon, 0.50f));
 
-		final BufferedImage updateIcon = ImageUtil.getResourceStreamFromClass(ItemGoalsPlugin.class, "update_icon.png");
+		final BufferedImage updateIcon = ImageUtil.getResourceStreamFromClass(MilestonesPlugin.class, "update_icon.png");
 
 		UPDATE_ICON = new ImageIcon(updateIcon);
 		UPDATE_HOVER_ICON = new ImageIcon(ImageUtil.alphaOffset(updateIcon, 0.50f));
 	}
 
-	ItemGoalsResultPanel(ItemGoalsPlugin plugin, int itemID, AsyncBufferedImage icon, String name)
+	ItemMilestoneResultCard(ItemMilestoneManager categoryManager, int itemId, AsyncBufferedImage icon, String name)
 	{
-		this.plugin = plugin;
-		this.itemID = itemID;
+		this.categoryManager = categoryManager;
+		this.itemId = itemId;
 		this.icon = icon;
 		this.name = name;
 
@@ -166,7 +170,7 @@ public class ItemGoalsResultPanel extends JPanel
 
 		addMouseListener(clickListener);
 
-		findConnectedGoal();
+		findConnectedMilestone();
 
 		populate();
 		populateConfig();
@@ -175,16 +179,21 @@ public class ItemGoalsResultPanel extends JPanel
 		add(mainContainer, BorderLayout.NORTH);
 	}
 
-	// If there is an active goal for this item, we store it
-	private void findConnectedGoal()
+	// If there is an active milestone for this item, we store it
+	private void findConnectedMilestone()
 	{
-		ArrayList<ItemGoal> goals = plugin.getUserGoals();
+		Collection<Milestone> milestones = categoryManager.getCategoryMilestones();
 
-		for (ItemGoal goal : goals)
+		for (Milestone milestone : milestones)
 		{
-			if (goal.getItemID() == itemID)
+			if (milestone == null)
 			{
-				this.connectedGoal = goal;
+				continue;
+			}
+
+			if (categoryManager.getMilestoneItemId(milestone.getId()) == itemId)
+			{
+				connectedMilestone = milestone;
 				return;
 			}
 		}
@@ -196,12 +205,12 @@ public class ItemGoalsResultPanel extends JPanel
 		infoContainer.add(itemName, BorderLayout.CENTER);
 		resultContainer.add(infoContainer, BorderLayout.PAGE_START);
 
-		// Add the progress bar you'd see on the normal goal tracker card if we're currently tracking this item
-		if (hasConnectedGoal())
+		// Add the progress bar you'd see on the normal milestone tracker card if we're currently tracking this item
+		if (hasConnectedMilestone())
 		{
 			// Progress bar
 			ThinProgressBar progressBar = new ThinProgressBar();
-			if (connectedGoal.getProgress() == connectedGoal.getAmount())
+			if (connectedMilestone.getProgress() == connectedMilestone.getAmount())
 			{
 				progressBar.setForeground(ColorScheme.PROGRESS_COMPLETE_COLOR);
 			}
@@ -209,8 +218,8 @@ public class ItemGoalsResultPanel extends JPanel
 			{
 				progressBar.setForeground(ColorScheme.PROGRESS_INPROGRESS_COLOR);
 			}
-			progressBar.setMaximumValue(connectedGoal.getAmount());
-			progressBar.setValue(connectedGoal.getProgress());
+			progressBar.setMaximumValue(connectedMilestone.getAmount());
+			progressBar.setValue(connectedMilestone.getProgress());
 
 			resultContainer.add(progressBar, BorderLayout.PAGE_END);
 		}
@@ -222,34 +231,34 @@ public class ItemGoalsResultPanel extends JPanel
 		amountSpinner = new JSpinner(model);
 		amountSpinner.setPreferredSize(new Dimension(75, 20));
 
-		if (hasConnectedGoal())
+		if (hasConnectedMilestone())
 		{
-			amountSpinner.setValue(connectedGoal.getAmount());
+			amountSpinner.setValue(connectedMilestone.getAmount());
 		}
 
 		JShadowedLabel amountLabel = new JShadowedLabel();
 		amountLabel.setText("Amount");
 		amountLabel.setForeground(Color.WHITE);
 
-		JLabel confirmButton = new JLabel(hasConnectedGoal() ? UPDATE_ICON : ADD_ICON);
+		JLabel confirmButton = new JLabel(hasConnectedMilestone() ? UPDATE_ICON : ADD_ICON);
 		confirmButton.addMouseListener(new MouseAdapter()
 		{
 			@Override
 			public void mousePressed(MouseEvent mouseEvent)
 			{
-				createGoal();
+				createMilestone();
 			}
 
 			@Override
 			public void mouseEntered(MouseEvent mouseEvent)
 			{
-				confirmButton.setIcon(hasConnectedGoal() ? UPDATE_HOVER_ICON : ADD_HOVER_ICON);
+				confirmButton.setIcon(hasConnectedMilestone() ? UPDATE_HOVER_ICON : ADD_HOVER_ICON);
 			}
 
 			@Override
 			public void mouseExited(MouseEvent mouseEvent)
 			{
-				confirmButton.setIcon(hasConnectedGoal() ? UPDATE_ICON : ADD_ICON);
+				confirmButton.setIcon(hasConnectedMilestone() ? UPDATE_ICON : ADD_ICON);
 			}
 		});
 
@@ -292,43 +301,42 @@ public class ItemGoalsResultPanel extends JPanel
 		repaint();
 	}
 
-	// Creates a new goal and adds it to the list of item goals
-	private void createGoal()
+	// Creates a new milestone and adds it to the list of item milestones
+	// Bit misleading name, but if we have a connected milestone, this updates the milestone
+	private void createMilestone()
 	{
-		if (hasConnectedGoal())
+		if (hasConnectedMilestone())
 		{
-			// Update the goal amount
-			int newGoal = (int)amountSpinner.getValue();
-			connectedGoal.setAmount(newGoal);
-			// If the goal is adjusted downwards below the progress, cap progress at the new goal
-			connectedGoal.setProgress(Math.min(newGoal, connectedGoal.getProgress()));
+			// Updated milestone amount
+			int newMilestone = (int)amountSpinner.getValue();
+			// If the milestone is adjusted downwards below the progress, cap progress at the new milestone
+			int progress = Math.min(newMilestone, connectedMilestone.getProgress());
 
-			plugin.updateGoal(connectedGoal);
+			categoryManager.updateMilestone(connectedMilestone.getId(), progress, newMilestone);
 		}
 		else
 		{
-			ItemGoal newGoal = new ItemGoal();
-			newGoal.setItemID(itemID);
-			newGoal.setAmount((int)amountSpinner.getValue());
-			newGoal.setName(itemName.getText());
+			Milestone newMilestone = new Milestone();
+			newMilestone.setAmount((int)amountSpinner.getValue());
+			newMilestone.setName(itemName.getText());
 
-			plugin.addNewGoal(newGoal);
-			this.connectedGoal = newGoal;
+			categoryManager.addNewMilestone(newMilestone, itemId);
+			connectedMilestone = newMilestone;
 		}
 
-		// Rebuild the panel after the goal has been added/updated
+		// Rebuild the panel after the milestone has been added/updated
 		rebuild(false);
 	}
 
 	protected void rebuild(boolean onlyIfConnected)
 	{
-		if (onlyIfConnected && !hasConnectedGoal())
+		if (onlyIfConnected && !hasConnectedMilestone())
 		{
 			return;
 		}
 
 		configOpen = false;
-		connectedGoal = null;
+		connectedMilestone = null;
 		removeMouseListener(clickListener);
 
 		resultContainer.removeAll();
@@ -360,8 +368,8 @@ public class ItemGoalsResultPanel extends JPanel
 		}
 	}
 
-	private boolean hasConnectedGoal()
+	private boolean hasConnectedMilestone()
 	{
-		return (connectedGoal != null);
+		return (connectedMilestone != null);
 	}
 }

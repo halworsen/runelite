@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.itemgoals;
+package net.runelite.client.plugins.milestones;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -33,11 +33,13 @@ import java.awt.Dimension;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.PluginPanel;
+import net.runelite.client.ui.components.CollapsibleCategory;
 import net.runelite.client.ui.components.PluginErrorPanel;
 import net.runelite.client.ui.components.materialtabs.MaterialTab;
 import net.runelite.client.ui.components.materialtabs.MaterialTabGroup;
@@ -50,22 +52,23 @@ import net.runelite.client.ui.components.materialtabs.MaterialTabGroup;
  * 	2. The actual content of the plugin panel (contentContainer)
  * The contentContainer contains the tab group at the top of the panel,
  * and the actual content of the plugin panel (held in currentViewContainer)
- * currentViewContainer contains both the goals listing panel and the add goal panel. It is controlled by the tab group.
+ * currentViewContainer contains both the milestones listing panel and the add milestone panel. It is controlled by the tab group.
  *
- * In the goals list view, goalsCardLayout controls whether an error panel is shown (when there are no goals) and
+ * In the milestones list view, milestonesCardLayout controls whether an error panel is shown (when there are no milestones) and
  * when the actual list is shown.
  */
 @Singleton
-public class ItemGoalsPanel extends PluginPanel
+@Slf4j
+public class MilestonesPluginPanel extends PluginPanel
 {
-	private final String GOALS_PANEL = "GOALS_PANEL";
-	private final String NO_GOALS_PANEL = "NO_GOALS_PANEL";
+	private final String MILESTONES_PANEL = "MILESTONES_PANEL";
+	private final String NO_MILESTONES_PANEL = "NO_MILESTONES_PANEL";
 
 	private final String CONTENT_PANEL = "CONTENT_PANEL";
 	private final String NOT_LOGGED_IN_PANEL = "NOT_LOGGED_IN_PANEL";
 
 	private final CardLayout panelCardLayout = new CardLayout();
-	private final CardLayout goalsCardLayout = new CardLayout();
+	private final CardLayout milestonesCardLayout = new CardLayout();
 
 	// Holds everything in the panel
 	private final JPanel mainContainer = new JPanel();
@@ -73,26 +76,26 @@ public class ItemGoalsPanel extends PluginPanel
 	private final JPanel panelContainer = new JPanel(panelCardLayout);
 	private final PluginErrorPanel notLoggedInPanel = new PluginErrorPanel();
 
-	// Holds the tabgroup & current view (goals or edit tab)
+	// Holds the tabgroup & current view (milestones or edit tab)
 	private final JPanel contentContainer = new JPanel();
-	// Holds the goal list or the add goal panel
+	// Holds the milestone list or the add milestone panel
 	private final JPanel currentViewContainer = new JPanel();
 
-	private final PluginErrorPanel noGoalsPanel = new PluginErrorPanel();
-	// Contains the actual goals panel and the no goals error panel
-	private final JPanel goalsContainer = new JPanel(goalsCardLayout);
-	// Holds all the goal cards
-	private final JPanel goalListPanel = new JPanel();
-
-	private ItemGoalsAddPanel addGoalPanel;
+	private final PluginErrorPanel noMilestonesPanel = new PluginErrorPanel();
+	// Contains the actual milestones panel and the no milestones error panel
+	private final JPanel milestonesContainer = new JPanel(milestonesCardLayout);
+	// Holds all the milestone cards
+	private final JPanel milestoneListPanel = new JPanel();
 
 	private final MaterialTabGroup tabGroup = new MaterialTabGroup(currentViewContainer);
+
+	private final JPanel editMilestonePanel = new JPanel();
 
 	@Inject
 	private ClientThread clientThread;
 
 	@Inject
-	private ItemGoalsPlugin plugin;
+	private MilestonesPlugin plugin;
 
 	@Inject
 	private ItemManager itemManager;
@@ -101,9 +104,9 @@ public class ItemGoalsPanel extends PluginPanel
 	private ScheduledExecutorService executor;
 
 	@Inject
-	ItemGoalsPanel(ItemGoalsPlugin plugin, ClientThread clientThread, ItemManager itemManager, ScheduledExecutorService executor)
+	MilestonesPluginPanel(MilestonesPlugin plugin, ClientThread clientThread, ItemManager itemManager, ScheduledExecutorService executor)
 	{
-		// Disable wrapping since we make our own scrollpanes for the goals/item search results
+		// Disable wrapping since we make our own scrollpanes for the milestones/item search results
 		super(false);
 
 		this.plugin = plugin;
@@ -126,49 +129,64 @@ public class ItemGoalsPanel extends PluginPanel
 		currentViewContainer.setLayout(new BorderLayout());
 		currentViewContainer.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-		goalListPanel.setLayout(new DynamicGridLayout(0, 1, 0, 5));
-		goalListPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		milestoneListPanel.setLayout(new DynamicGridLayout(0, 1, 0, 5));
+		milestoneListPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
 
 		// Wrapper for the not logged in error panel
 		JPanel notLoggedInWrapper = new JPanel();
 		notLoggedInWrapper.setLayout(new BorderLayout());
-		notLoggedInPanel.setContent("Item Goals", "Log in to view and edit your item goals.");
+		notLoggedInPanel.setContent("Milestones", "Log in to view and edit your milestones.");
 		notLoggedInWrapper.add(notLoggedInPanel, BorderLayout.NORTH);
 
-		// Wrapper for the goals list
-		JPanel goalsWrapper = new JPanel();
-		goalsWrapper.setLayout(new BorderLayout());
-		goalsWrapper.add(goalListPanel, BorderLayout.NORTH);
+		// Wrapper for the milestones list
+		JPanel milestonesWrapper = new JPanel();
+		milestonesWrapper.setLayout(new BorderLayout());
+		milestonesWrapper.add(milestoneListPanel, BorderLayout.NORTH);
 
-		// Give the goals list a scrollbar
-		JScrollPane goalsScrollWrapper = new JScrollPane(goalsWrapper);
-		goalsScrollWrapper.getVerticalScrollBar().setPreferredSize(new Dimension(12, 0));
-		goalsScrollWrapper.getVerticalScrollBar().setBorder(new EmptyBorder(0, 5, 0, 0));
-		goalsScrollWrapper.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		goalsScrollWrapper.setVisible(false);
+		// Give the milestones list a scrollbar
+		JScrollPane milestonesScrollWrapper = new JScrollPane(milestonesWrapper);
+		milestonesScrollWrapper.getVerticalScrollBar().setPreferredSize(new Dimension(12, 0));
+		milestonesScrollWrapper.getVerticalScrollBar().setBorder(new EmptyBorder(0, 5, 0, 0));
+		milestonesScrollWrapper.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		milestonesScrollWrapper.setVisible(false);
 
-		// Wrapper for the no goals error panel
-		JPanel noGoalsWrapper = new JPanel();
-		noGoalsWrapper.setLayout(new BorderLayout());
-		noGoalsPanel.setContent("Item Goals", "You have not set any item goals.");
-		noGoalsWrapper.add(noGoalsPanel, BorderLayout.NORTH);
+		// Wrapper for the no milestones error panel
+		JPanel noMilestonesWrapper = new JPanel();
+		noMilestonesWrapper.setLayout(new BorderLayout());
+		noMilestonesPanel.setContent("Milestones", "You have not set any milestones.");
+		noMilestonesWrapper.add(noMilestonesPanel, BorderLayout.NORTH);
 
-		// Add goal panel / "Edit" tab
-		addGoalPanel = new ItemGoalsAddPanel(plugin, itemManager, clientThread, executor);
+		// Edit milestone panels
+		JPanel editMilestoneGrid = new JPanel(new DynamicGridLayout(0, 1, 0, 5));
+		editMilestoneGrid.setBackground(ColorScheme.DARK_GRAY_COLOR);
 
-		rebuildGoals();
+		// Add the milestone editor panel associated with each category
+		for (MilestonesCategoryManager manager : plugin.getCategoryManagers())
+		{
+			JPanel categoryEditPanel = manager.getEditPanel();
+			// Wrap the edit panel in a collapsible panel
+			CollapsibleCategory categoryHolder = new CollapsibleCategory(manager.getCategoryName(), categoryEditPanel);
 
-		goalsContainer.add(goalsScrollWrapper, GOALS_PANEL);
-		goalsContainer.add(noGoalsWrapper, NO_GOALS_PANEL);
-		goalsCardLayout.show(goalsContainer, plugin.hasNoGoals() ? NO_GOALS_PANEL : GOALS_PANEL);
+			editMilestoneGrid.add(categoryHolder);
+		}
 
-		MaterialTab goalsTab = new MaterialTab("Goals", tabGroup, goalsContainer);
-		MaterialTab editTab = new MaterialTab("Edit", tabGroup, addGoalPanel);
+		editMilestonePanel.setLayout(new BorderLayout());
+		editMilestonePanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		editMilestonePanel.add(editMilestoneGrid, BorderLayout.CENTER);
+
+		milestonesContainer.add(milestonesScrollWrapper, MILESTONES_PANEL);
+		milestonesContainer.add(noMilestonesWrapper, NO_MILESTONES_PANEL);
+		milestonesCardLayout.show(milestonesContainer, plugin.hasNoMilestones() ? NO_MILESTONES_PANEL : MILESTONES_PANEL);
+
+		rebuildMilestones();
+
+		MaterialTab milestonesTab = new MaterialTab("Milestones", tabGroup, milestonesContainer);
+		MaterialTab editTab = new MaterialTab("Edit", tabGroup, editMilestonePanel);
 
 		tabGroup.setBorder(new EmptyBorder(5, 0, 0, 0));
-		tabGroup.addTab(goalsTab);
+		tabGroup.addTab(milestonesTab);
 		tabGroup.addTab(editTab);
-		tabGroup.select(goalsTab);
+		tabGroup.select(milestonesTab);
 
 		contentContainer.add(tabGroup, BorderLayout.NORTH);
 		contentContainer.add(currentViewContainer, BorderLayout.CENTER);
@@ -186,32 +204,42 @@ public class ItemGoalsPanel extends PluginPanel
 		panelCardLayout.show(panelContainer, isLoggedIn ? CONTENT_PANEL : NOT_LOGGED_IN_PANEL);
 	}
 
-	protected void rebuildGoals()
+	protected void rebuildMilestones()
 	{
-		goalListPanel.removeAll();
+		milestoneListPanel.removeAll();
 
-		for (ItemGoal goal : plugin.getUserGoals())
+		for (Milestone milestone : plugin.getUserMilestones())
 		{
-			ItemGoalsGoalPanel goalPanel = new ItemGoalsGoalPanel(plugin, goal, itemManager);
-			goalListPanel.add(goalPanel);
+			MilestonesCategoryManager manager = plugin.getCategoryManager(milestone.getCategory());
+			MilestonesMilestoneCard milestoneCard = new MilestonesMilestoneCard(manager, milestone, itemManager);
+			milestoneListPanel.add(milestoneCard);
 		}
 
-		// Rebuild the search results too, since they appear differently based on if there's an active goal for the item
-		addGoalPanel.rebuildResults(true);
+		// Rebuild the category edit panels since they may use milestone data in their panels
+		for (MilestonesCategoryManager manager : plugin.getCategoryManagers())
+		{
+			manager.rebuildEditPanel();
+		}
 
-		goalListPanel.revalidate();
-		goalListPanel.repaint();
+		milestoneListPanel.revalidate();
+		milestoneListPanel.repaint();
 
-		goalsCardLayout.show(goalsContainer, plugin.hasNoGoals() ? NO_GOALS_PANEL : GOALS_PANEL);
+		milestonesCardLayout.show(milestonesContainer, plugin.hasNoMilestones() ? NO_MILESTONES_PANEL : MILESTONES_PANEL);
 	}
 
 	protected void fullReset()
 	{
-		goalListPanel.removeAll();
-		addGoalPanel.reset();
-		goalListPanel.revalidate();
-		goalListPanel.repaint();
+		milestoneListPanel.removeAll();
 
-		goalsCardLayout.show(goalsContainer, NO_GOALS_PANEL);
+		// Reset the edit panels
+		for (MilestonesCategoryManager manager : plugin.getCategoryManagers())
+		{
+			manager.resetEditPanel();
+		}
+
+		milestoneListPanel.revalidate();
+		milestoneListPanel.repaint();
+
+		milestonesCardLayout.show(milestonesContainer, NO_MILESTONES_PANEL);
 	}
 }

@@ -22,30 +22,16 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.itemgoals;
+package net.runelite.client.plugins.milestones;
 
-import net.runelite.client.config.Config;
-import net.runelite.client.config.ConfigGroup;
-import net.runelite.client.config.ConfigItem;
+import lombok.Data;
 
-@ConfigGroup("itemgoals")
-public interface ItemGoalsConfig extends Config
+@Data
+public class Milestone
 {
-	@ConfigItem(
-			keyName = "itemGoalsData",
-			name = "",
-			description = "",
-			hidden = true
-	)
-	default String itemGoalsData()
-	{
-		return "";
-	}
-
-	@ConfigItem(
-			keyName = "itemGoalsData",
-			name = "",
-			description = ""
-	)
-	void itemGoalsData(String str);
+	private int id;
+	private String category;
+	private String name;
+	private int amount;
+	private int progress;
 }

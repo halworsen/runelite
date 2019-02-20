@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.itemgoals;
+package net.runelite.client.plugins.milestones.items;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
@@ -36,16 +36,19 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ItemComposition;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.AsyncBufferedImage;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.plugins.milestones.util.MilestonesItemSearch;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.components.IconTextField;
 import net.runelite.client.ui.components.PluginErrorPanel;
 
-public class ItemGoalsAddPanel extends JPanel
+@Slf4j
+public class ItemMilestoneEditPanel extends JPanel
 {
 	private static final String ERROR_PANEL = "ERROR_PANEL";
 	private static final String RESULT_PANEL = "RESULT_PANEL";
@@ -63,20 +66,20 @@ public class ItemGoalsAddPanel extends JPanel
 	private final IconTextField searchBar = new IconTextField();
 	private final PluginErrorPanel searchFailPanel = new PluginErrorPanel();
 
-	private ItemGoalFullItemSearch searcher;
+	private MilestonesItemSearch searcher;
 
 	private final List<Integer> itemIdsList = new ArrayList<>();
-	private final List<ItemGoalsResultPanel> activeResults = new ArrayList<>();
+	private final List<ItemMilestoneResultCard> activeResults = new ArrayList<>();
 
-	private ItemGoalsPlugin plugin;
+	private ItemMilestoneManager categoryManager;
 
-	ItemGoalsAddPanel(ItemGoalsPlugin plugin, ItemManager itemManager, ClientThread clientThread, ScheduledExecutorService executor)
+	ItemMilestoneEditPanel(ItemMilestoneManager categoryManager, ItemManager itemManager, ClientThread clientThread, ScheduledExecutorService executor)
 	{
-		this.plugin = plugin;
+		this.categoryManager = categoryManager;
 		this.itemManager = itemManager;
 		this.clientThread = clientThread;
 		this.executor = executor;
-		searcher = new ItemGoalFullItemSearch(itemManager);
+		searcher = new MilestonesItemSearch(itemManager);
 
 		init();
 	}
@@ -192,17 +195,17 @@ public class ItemGoalsAddPanel extends JPanel
 				String name = idToNameMap.get(itemID);
 
 				/*
-				 * No point in showing these to F2Ps
-				 * Note however: some item variations are mapped down to members only counterparts of items that
-				 * are actually available to F2Ps! This can be fixed by mapping variations to the proper
-				 * itemIDs in item_variations.json but is a huge undertaking. To-do, maybe?
-				*/
+					* No point in showing these to F2Ps
+					* Note however: some item variations are mapped down to members only counterparts of items that
+					* are actually available to F2Ps! This can be fixed by mapping variations to the proper
+					* itemIDs in item_variations.json but is a huge undertaking. To-do, maybe?
+					*/
 				if (name == "Members object")
 				{
 					continue;
 				}
 
-				ItemGoalsResultPanel searchResultPanel = new ItemGoalsResultPanel(plugin, itemID, icon, name);
+				ItemMilestoneResultCard searchResultPanel = new ItemMilestoneResultCard(categoryManager, itemID, icon, name);
 
 				activeResults.add(searchResultPanel);
 				resultPanel.add(searchResultPanel);
@@ -222,7 +225,7 @@ public class ItemGoalsAddPanel extends JPanel
 
 	protected void rebuildResults(boolean onlyIfConnected)
 	{
-		for (ItemGoalsResultPanel panel : activeResults)
+		for (ItemMilestoneResultCard panel : activeResults)
 		{
 			panel.rebuild(onlyIfConnected);
 		}
