@@ -130,6 +130,8 @@ public class MilestonesMilestoneCard extends JPanel
 		// Goal item icon
 		JLabel itemIcon = new JLabel();
 		itemIcon.setPreferredSize(ICON_SIZE);
+		itemIcon.setHorizontalAlignment(SwingConstants.CENTER);
+		itemIcon.setVerticalAlignment(SwingConstants.CENTER);
 		itemIcon.setToolTipText(milestone.getName());
 		if (icon != null)
 		{

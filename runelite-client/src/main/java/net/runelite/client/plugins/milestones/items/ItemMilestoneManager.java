@@ -82,17 +82,6 @@ public class ItemMilestoneManager extends MilestonesCategoryManager
 	}
 
 	@Override
-	public AsyncBufferedImage getIcon(int milestoneId)
-	{
-		if (!containsMilestone(milestoneId))
-		{
-			return super.getIcon(milestoneId);
-		}
-
-		return itemManager.getImage(milestoneItemIdMap.get(milestoneId));
-	}
-
-	@Override
 	public JPanel getEditPanel()
 	{
 		if (editPanel == null)
@@ -101,6 +90,12 @@ public class ItemMilestoneManager extends MilestonesCategoryManager
 		}
 
 		return editPanel;
+	}
+
+	@Override
+	public boolean shouldWrapEditor()
+	{
+		return false;
 	}
 
 	@Override
@@ -113,6 +108,17 @@ public class ItemMilestoneManager extends MilestonesCategoryManager
 	public void resetEditPanel()
 	{
 		editPanel.reset();
+	}
+
+	@Override
+	public AsyncBufferedImage getIcon(int milestoneId)
+	{
+		if (!containsMilestone(milestoneId))
+		{
+			return super.getIcon(milestoneId);
+		}
+
+		return itemManager.getImage(milestoneItemIdMap.get(milestoneId));
 	}
 
 	protected int getMIDByItemId(int itemId)

@@ -60,6 +60,15 @@ public abstract class MilestonesCategoryManager
 		return new JPanel();
 	}
 
+	/*
+	  * Whether or not to wrap the editor panel in a scrollpane in the edit panel.
+	  * Override this if you want to handle scrolling internally in the edit panel
+	 */
+	public boolean shouldWrapEditor()
+	{
+		return true;
+	}
+
 	// Should return a icon to display on the milestone card for the given milestone ID
 	public AsyncBufferedImage getIcon(int milestoneId)
 	{

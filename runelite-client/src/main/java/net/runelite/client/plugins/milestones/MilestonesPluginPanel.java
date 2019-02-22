@@ -26,10 +26,15 @@ package net.runelite.client.plugins.milestones;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import java.awt.Cursor;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.concurrent.ScheduledExecutorService;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Dimension;
+import javax.swing.ImageIcon;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
@@ -39,7 +44,6 @@ import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.PluginPanel;
-import net.runelite.client.ui.components.CollapsibleCategory;
 import net.runelite.client.ui.components.PluginErrorPanel;
 import net.runelite.client.ui.components.materialtabs.MaterialTab;
 import net.runelite.client.ui.components.materialtabs.MaterialTabGroup;
@@ -67,8 +71,15 @@ public class MilestonesPluginPanel extends PluginPanel
 	private final String CONTENT_PANEL = "CONTENT_PANEL";
 	private final String NOT_LOGGED_IN_PANEL = "NOT_LOGGED_IN_PANEL";
 
+	// editor panel strings are generated automatically
+	private final String EDITOR_SELECTION_PANEL = "EDITOR_SELECTION_PANEL";
+
+	private final ImageIcon openEditIcon = new ImageIcon(this.getClass().getResource("open_category.png"));
+	private final ImageIcon closeEditIcon = new ImageIcon(this.getClass().getResource("close_category.png"));
+
 	private final CardLayout panelCardLayout = new CardLayout();
 	private final CardLayout milestonesCardLayout = new CardLayout();
+	private final CardLayout editorCardLayout = new CardLayout();
 
 	// Holds everything in the panel
 	private final JPanel mainContainer = new JPanel();
@@ -148,7 +159,6 @@ public class MilestonesPluginPanel extends PluginPanel
 		milestonesScrollWrapper.getVerticalScrollBar().setPreferredSize(new Dimension(12, 0));
 		milestonesScrollWrapper.getVerticalScrollBar().setBorder(new EmptyBorder(0, 5, 0, 0));
 		milestonesScrollWrapper.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		milestonesScrollWrapper.setVisible(false);
 
 		// Wrapper for the no milestones error panel
 		JPanel noMilestonesWrapper = new JPanel();
@@ -160,19 +170,27 @@ public class MilestonesPluginPanel extends PluginPanel
 		JPanel editMilestoneGrid = new JPanel(new DynamicGridLayout(0, 1, 0, 5));
 		editMilestoneGrid.setBackground(ColorScheme.DARK_GRAY_COLOR);
 
+		// Wrap the grid to prevent it from taking up too much space and spacing out the categories
+		JPanel editMilestoneWrapper = new JPanel();
+		editMilestoneWrapper.setLayout(new BorderLayout());
+		editMilestoneWrapper.add(editMilestoneGrid, BorderLayout.NORTH);
+
+		JScrollPane editScrollWrapper = new JScrollPane(editMilestoneWrapper);
+		editScrollWrapper.getVerticalScrollBar().setPreferredSize(new Dimension(12, 0));
+		editScrollWrapper.getVerticalScrollBar().setBorder(new EmptyBorder(0, 5, 0, 0));
+		editScrollWrapper.setBackground(ColorScheme.DARK_GRAY_COLOR);
+
+		editMilestonePanel.setLayout(editorCardLayout);
+		editMilestonePanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
+
 		// Add the milestone editor panel associated with each category
 		for (MilestonesCategoryManager manager : plugin.getCategoryManagers())
 		{
-			JPanel categoryEditPanel = manager.getEditPanel();
-			// Wrap the edit panel in a collapsible panel
-			CollapsibleCategory categoryHolder = new CollapsibleCategory(manager.getCategoryName(), categoryEditPanel);
-
-			editMilestoneGrid.add(categoryHolder);
+			editMilestoneGrid.add(makeEditorPanels(manager, manager.shouldWrapEditor()));
 		}
 
-		editMilestonePanel.setLayout(new BorderLayout());
-		editMilestonePanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		editMilestonePanel.add(editMilestoneGrid, BorderLayout.CENTER);
+		editMilestonePanel.add(editScrollWrapper, EDITOR_SELECTION_PANEL);
+		editorCardLayout.show(editMilestonePanel, EDITOR_SELECTION_PANEL);
 
 		milestonesContainer.add(milestonesScrollWrapper, MILESTONES_PANEL);
 		milestonesContainer.add(noMilestonesWrapper, NO_MILESTONES_PANEL);
@@ -193,7 +211,7 @@ public class MilestonesPluginPanel extends PluginPanel
 
 		panelContainer.add(contentContainer, CONTENT_PANEL);
 		panelContainer.add(notLoggedInWrapper, NOT_LOGGED_IN_PANEL);
-		panelCardLayout.show(panelContainer, NOT_LOGGED_IN_PANEL);
+		panelCardLayout.show(panelContainer, CONTENT_PANEL);
 
 		mainContainer.add(panelContainer, BorderLayout.CENTER);
 		add(mainContainer, BorderLayout.CENTER);
@@ -225,6 +243,110 @@ public class MilestonesPluginPanel extends PluginPanel
 		milestoneListPanel.repaint();
 
 		milestonesCardLayout.show(milestonesContainer, plugin.hasNoMilestones() ? NO_MILESTONES_PANEL : MILESTONES_PANEL);
+	}
+
+	// Returns the title card panel to use in the editor selection list
+	// If wrap is set, it'll wrap the editor panel in a scrollpane
+	private JPanel makeEditorPanels(MilestonesCategoryManager manager, boolean wrap)
+	{
+		JPanel categoryEditPanel = manager.getEditPanel();
+		final String panelName = ("EDIT_" + manager.getCategoryName() + "_PANEL");
+
+		// Make a title card thingy for selecting the panel
+		JPanel titleCard = new JPanel();
+		titleCard.setLayout(new BorderLayout());
+		titleCard.setBorder(new EmptyBorder(7, 7, 7, 7));
+		titleCard.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+
+		JLabel categoryTitle = new JLabel(manager.getCategoryName());
+		JLabel openButton = new JLabel(openEditIcon);
+
+		titleCard.add(categoryTitle, BorderLayout.LINE_START);
+		titleCard.add(openButton, BorderLayout.LINE_END);
+
+		titleCard.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mousePressed(MouseEvent mouseEvent)
+			{
+				editorCardLayout.show(editMilestonePanel, panelName);
+			}
+
+			@Override
+			public void mouseEntered(MouseEvent mouseEvent)
+			{
+				titleCard.setBackground(ColorScheme.DARKER_GRAY_HOVER_COLOR);
+				setCursor(new Cursor(Cursor.HAND_CURSOR));
+			}
+
+			@Override
+			public void mouseExited(MouseEvent mouseEvent)
+			{
+				titleCard.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+				setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+			}
+		});
+
+		// Make a new title card for the edit panel
+		JPanel editHeader = new JPanel();
+		editHeader.setLayout(new BorderLayout());
+		editHeader.setBorder(new EmptyBorder(7, 7, 7, 7));
+		editHeader.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+
+		JLabel headerTitle = new JLabel(manager.getCategoryName());
+		JLabel closeButton = new JLabel(closeEditIcon);
+
+		editHeader.add(headerTitle, BorderLayout.LINE_START);
+		editHeader.add(closeButton, BorderLayout.LINE_END);
+
+		editHeader.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mousePressed(MouseEvent mouseEvent)
+			{
+				editorCardLayout.show(editMilestonePanel, EDITOR_SELECTION_PANEL);
+			}
+
+			@Override
+			public void mouseEntered(MouseEvent mouseEvent)
+			{
+				editHeader.setBackground(ColorScheme.DARKER_GRAY_HOVER_COLOR);
+				setCursor(new Cursor(Cursor.HAND_CURSOR));
+			}
+
+			@Override
+			public void mouseExited(MouseEvent mouseEvent)
+			{
+				editHeader.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+				setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+			}
+		});
+
+		JPanel editPanel = new JPanel();
+		editPanel.setLayout(new BorderLayout(0, 5));
+
+		editPanel.add(editHeader, BorderLayout.NORTH);
+
+		if (wrap)
+		{
+			JPanel editWrapper = new JPanel();
+			editWrapper.setLayout(new BorderLayout());
+			editWrapper.add(categoryEditPanel, BorderLayout.NORTH);
+
+			JScrollPane scrollWrapper = new JScrollPane(editWrapper);
+			scrollWrapper.getVerticalScrollBar().setPreferredSize(new Dimension(12, 0));
+			scrollWrapper.getVerticalScrollBar().setBorder(new EmptyBorder(0, 5, 0, 0));
+			scrollWrapper.setBackground(ColorScheme.DARK_GRAY_COLOR);
+
+			editPanel.add(scrollWrapper, BorderLayout.CENTER);
+		}
+		else
+		{
+			editPanel.add(categoryEditPanel, BorderLayout.CENTER);
+		}
+
+		editMilestonePanel.add(editPanel, panelName);
+		return titleCard;
 	}
 
 	protected void fullReset()

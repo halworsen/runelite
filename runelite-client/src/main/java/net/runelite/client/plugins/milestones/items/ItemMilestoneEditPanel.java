@@ -107,7 +107,7 @@ public class ItemMilestoneEditPanel extends JPanel
 		JPanel resultWrapper = new JPanel();
 		resultWrapper.setLayout(new BorderLayout());
 		resultWrapper.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		resultWrapper.add(resultPanel, BorderLayout.PAGE_START);
+		resultWrapper.add(resultPanel, BorderLayout.NORTH);
 
 		// Give the results a scroll bar
 		JScrollPane scrollWrapper = new JScrollPane(resultWrapper);
