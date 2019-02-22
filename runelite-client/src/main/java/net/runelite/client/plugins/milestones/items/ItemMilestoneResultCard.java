@@ -80,11 +80,11 @@ public class ItemMilestoneResultCard extends JPanel
 
 	private boolean configOpen = false;
 
-	private ItemMilestoneManager categoryManager;
+	private ItemMilestoneManager manager;
 	private AsyncBufferedImage icon;
 	private String name;
 	private MouseAdapter clickListener;
-	private Milestone connectedMilestone;
+	private int connectedMilestone = -1;
 
 	static
 	{
@@ -101,7 +101,7 @@ public class ItemMilestoneResultCard extends JPanel
 
 	ItemMilestoneResultCard(ItemMilestoneManager categoryManager, int itemId, AsyncBufferedImage icon, String name)
 	{
-		this.categoryManager = categoryManager;
+		this.manager = categoryManager;
 		this.itemId = itemId;
 		this.icon = icon;
 		this.name = name;
@@ -182,7 +182,7 @@ public class ItemMilestoneResultCard extends JPanel
 	// If there is an active milestone for this item, we store it
 	private void findConnectedMilestone()
 	{
-		Collection<Milestone> milestones = categoryManager.getCategoryMilestones();
+		Collection<Milestone> milestones = manager.getCategoryMilestones();
 
 		for (Milestone milestone : milestones)
 		{
@@ -191,9 +191,10 @@ public class ItemMilestoneResultCard extends JPanel
 				continue;
 			}
 
-			if (categoryManager.getMilestoneItemId(milestone.getId()) == itemId)
+			int milestoneId = milestone.getId();
+			if (manager.getMilestoneItemId(milestoneId) == itemId)
 			{
-				connectedMilestone = milestone;
+				connectedMilestone = milestoneId;
 				return;
 			}
 		}
@@ -208,9 +209,11 @@ public class ItemMilestoneResultCard extends JPanel
 		// Add the progress bar you'd see on the normal milestone tracker card if we're currently tracking this item
 		if (hasConnectedMilestone())
 		{
+			Milestone milestone = manager.getMilestone(connectedMilestone);
+
 			// Progress bar
 			ThinProgressBar progressBar = new ThinProgressBar();
-			if (connectedMilestone.getProgress() == connectedMilestone.getAmount())
+			if (milestone.getProgress() == milestone.getAmount())
 			{
 				progressBar.setForeground(ColorScheme.PROGRESS_COMPLETE_COLOR);
 			}
@@ -218,8 +221,8 @@ public class ItemMilestoneResultCard extends JPanel
 			{
 				progressBar.setForeground(ColorScheme.PROGRESS_INPROGRESS_COLOR);
 			}
-			progressBar.setMaximumValue(connectedMilestone.getAmount());
-			progressBar.setValue(connectedMilestone.getProgress());
+			progressBar.setMaximumValue(milestone.getAmount());
+			progressBar.setValue(milestone.getProgress());
 
 			resultContainer.add(progressBar, BorderLayout.PAGE_END);
 		}
@@ -233,7 +236,8 @@ public class ItemMilestoneResultCard extends JPanel
 
 		if (hasConnectedMilestone())
 		{
-			amountSpinner.setValue(connectedMilestone.getAmount());
+			Milestone milestone = manager.getMilestone(connectedMilestone);
+			amountSpinner.setValue(milestone.getAmount());
 		}
 
 		JShadowedLabel amountLabel = new JShadowedLabel();
@@ -310,18 +314,19 @@ public class ItemMilestoneResultCard extends JPanel
 			// Updated milestone amount
 			int newMilestone = (int)amountSpinner.getValue();
 			// If the milestone is adjusted downwards below the progress, cap progress at the new milestone
-			int progress = Math.min(newMilestone, connectedMilestone.getProgress());
+			Milestone milestone = manager.getMilestone(connectedMilestone);
+			int progress = Math.min(newMilestone, milestone.getProgress());
 
-			categoryManager.updateMilestone(connectedMilestone.getId(), progress, newMilestone);
+			manager.updateMilestone(connectedMilestone, progress, newMilestone);
 		}
 		else
 		{
-			Milestone newMilestone = new Milestone();
-			newMilestone.setAmount((int)amountSpinner.getValue());
-			newMilestone.setName(itemName.getText());
-
-			categoryManager.addNewMilestone(newMilestone, itemId);
-			connectedMilestone = newMilestone;
+			connectedMilestone = manager.addNewMilestone(
+					itemName.getText(),
+					0,
+					(int)amountSpinner.getValue(),
+					itemId
+			);
 		}
 
 		// Rebuild the panel after the milestone has been added/updated
@@ -336,7 +341,7 @@ public class ItemMilestoneResultCard extends JPanel
 		}
 
 		configOpen = false;
-		connectedMilestone = null;
+		connectedMilestone = -1;
 		removeMouseListener(clickListener);
 
 		resultContainer.removeAll();
@@ -370,6 +375,6 @@ public class ItemMilestoneResultCard extends JPanel
 
 	private boolean hasConnectedMilestone()
 	{
-		return (connectedMilestone != null);
+		return (connectedMilestone != -1);
 	}
 }

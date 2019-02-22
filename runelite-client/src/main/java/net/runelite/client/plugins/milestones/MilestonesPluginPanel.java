@@ -37,6 +37,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.border.EmptyBorder;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.callback.ClientThread;
@@ -338,7 +339,11 @@ public class MilestonesPluginPanel extends PluginPanel
 			scrollWrapper.getVerticalScrollBar().setBorder(new EmptyBorder(0, 5, 0, 0));
 			scrollWrapper.setBackground(ColorScheme.DARK_GRAY_COLOR);
 
-			editPanel.add(scrollWrapper, BorderLayout.CENTER);
+			JPanel wrappedEditor = new JPanel();
+			wrappedEditor.setLayout(new BorderLayout());
+			wrappedEditor.add(scrollWrapper, BorderLayout.CENTER);
+
+			editPanel.add(wrappedEditor, BorderLayout.CENTER);
 		}
 		else
 		{

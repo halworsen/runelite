@@ -93,11 +93,14 @@ public abstract class MilestonesCategoryManager
 	}
 
 	// All milestone creation/updates/removals should go through the manager
-	protected int addNewMilestone(Milestone newMilestone)
+	protected int addNewMilestone(String name, int progress, int amount)
 	{
-		int milestoneId = plugin.addNewMilestone(newMilestone);
+		int milestoneId = plugin.addNewMilestone(name, progress, amount);
 
-		categoryMilestones.put(milestoneId, newMilestone);
+		Milestone milestone = plugin.getMilestoneById(milestoneId);
+		milestone.setCategory(categoryName);
+
+		categoryMilestones.put(milestoneId, milestone);
 
 		return milestoneId;
 	}
@@ -113,6 +116,11 @@ public abstract class MilestonesCategoryManager
 	}
 
 	// This doesn't do anything but pass the call up the chain, but is necessary because the plugin needs to update the milestone panel
+	protected void updateMilestone(int milestoneId, String name, int progress, int amount)
+	{
+		plugin.updateMilestone(milestoneId, name, progress, amount);
+	}
+
 	protected void updateMilestone(int milestoneId, int progress, int amount)
 	{
 		plugin.updateMilestone(milestoneId, progress, amount);

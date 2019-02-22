@@ -120,7 +120,7 @@ public class ItemMilestoneEditPanel extends JPanel
 		JPanel errorWrapper = new JPanel();
 		errorWrapper.setLayout(new BorderLayout());
 		errorWrapper.add(searchFailPanel, BorderLayout.NORTH);
-		searchFailPanel.setContent("Item Search", "Search for any item and add it as a tracked goal.");
+		searchFailPanel.setContent("Item Search", "Search for any item and add it as a milestone.");
 
 		searchContainer.add(scrollWrapper, RESULT_PANEL);
 		searchContainer.add(errorWrapper, ERROR_PANEL);

@@ -287,12 +287,18 @@ public class ItemMilestoneManager extends MilestonesCategoryManager
 		}
 	}
 
-	protected void addNewMilestone(Milestone newMilestone, int itemId)
+	protected Milestone getMilestone(int milestoneId)
 	{
-		newMilestone.setCategory(getCategoryName());
-		int milestoneId = addNewMilestone(newMilestone);
+		return plugin.getMilestoneById(milestoneId);
+	}
+
+	protected int addNewMilestone(String name, int progress, int amount, int itemId)
+	{
+		int milestoneId = addNewMilestone(name, progress, amount);
 
 		milestoneItemIdMap.put(milestoneId, itemId);
+
+		return milestoneId;
 	}
 
 	// Pass the call up the chain

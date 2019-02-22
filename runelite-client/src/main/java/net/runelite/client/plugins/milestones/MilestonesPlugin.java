@@ -47,6 +47,8 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.milestones.items.ItemMilestoneManager;
+import net.runelite.client.plugins.milestones.quests.QuestMilestoneManager;
+import net.runelite.client.plugins.milestones.skills.SkillMilestoneManager;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
@@ -83,8 +85,13 @@ public class MilestonesPlugin extends Plugin
 	// Holds the next milestoneId to use
 	private int nextMilestoneId = 1;
 
+	// Milestone category managers
 	@Inject
 	private ItemMilestoneManager itemMilestoneManager;
+	@Inject
+	private SkillMilestoneManager skillMilestoneManager;
+	@Inject
+	private QuestMilestoneManager questMilestoneManager;
 
 	@Provides
 	MilestonesConfig getConfig(ConfigManager configManager)
@@ -97,7 +104,10 @@ public class MilestonesPlugin extends Plugin
 	{
 		// Add each milestone category manager to the map of managers
 		milestoneCategories.put(itemMilestoneManager.getCategoryName(), itemMilestoneManager);
+		milestoneCategories.put(skillMilestoneManager.getCategoryName(), skillMilestoneManager);
+		milestoneCategories.put(questMilestoneManager.getCategoryName(), questMilestoneManager);
 
+		config.milestoneData("");
 		// Register each manager to the event bus
 		for (MilestonesCategoryManager manager : milestoneCategories.values())
 		{
@@ -158,10 +168,15 @@ public class MilestonesPlugin extends Plugin
 		return null;
 	}
 
-	public int addNewMilestone(Milestone newMilestone)
+	public int addNewMilestone(String name, int progress, int amount)
 	{
-		newMilestone.setId(nextMilestoneId);
-		userMilestones.add(newMilestone);
+		Milestone milestone = new Milestone();
+		milestone.setName(name);
+		milestone.setProgress(progress);
+		milestone.setAmount(amount);
+		milestone.setId(nextMilestoneId);
+
+		userMilestones.add(milestone);
 
 		SwingUtilities.invokeLater(() -> pluginPanel.rebuildMilestones());
 
@@ -180,6 +195,22 @@ public class MilestonesPlugin extends Plugin
 			{
 				int newProgress = Math.min(milestone.getProgress() + amount, milestone.getAmount());
 				milestone.setProgress(newProgress);
+				break;
+			}
+		}
+
+		SwingUtilities.invokeLater(() -> pluginPanel.rebuildMilestones());
+	}
+
+	public void updateMilestone(int milestoneId, String name, int progress, int amount)
+	{
+		for (Milestone milestone : userMilestones)
+		{
+			if (milestone.getId() == milestoneId)
+			{
+				milestone.setName(name);
+				milestone.setAmount(amount);
+				milestone.setProgress(progress);
 				break;
 			}
 		}
