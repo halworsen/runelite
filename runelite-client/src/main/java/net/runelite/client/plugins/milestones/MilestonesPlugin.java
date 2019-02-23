@@ -360,9 +360,9 @@ public class MilestonesPlugin extends Plugin
 		// Finally, we find the largest milestone ID so we can continue counting it upwards
 		for (Milestone milestone : userMilestones)
 		{
-			if (milestone.getId() > nextMilestoneId)
+			if (milestone.getId() >= nextMilestoneId)
 			{
-				nextMilestoneId = milestone.getId();
+				nextMilestoneId = milestone.getId() + 1;
 			}
 		}
 	}

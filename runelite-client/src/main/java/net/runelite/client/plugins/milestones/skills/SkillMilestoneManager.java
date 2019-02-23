@@ -108,7 +108,7 @@ public class SkillMilestoneManager extends MilestonesCategoryManager
 			}
 
 			total += client.getSkillExperience(skill);
-			// TODO: Max XP is greater than the max size of an integer, which can cause overflows. This category needs a larger rewrite to use longs
+			// TODO: Max XP is greater than the max size of an integer, which can cause overflows. Milestones as a whole needs a refactor to use longs
 			if (total < prevTotal)
 			{
 				return Integer.MAX_VALUE;
@@ -174,7 +174,6 @@ public class SkillMilestoneManager extends MilestonesCategoryManager
 		return skillName + " " + (isLevelMilestone ? "level" : "XP");
 	}
 
-	// TODO: (bug) something goes horribly wrong when you add new milestones on top of old ones?
 	protected int addNewMilestone(Skill skill, int amount, boolean isLevelMilestone)
 	{
 		SkillMilestoneInfo info = new SkillMilestoneInfo();
@@ -322,7 +321,6 @@ public class SkillMilestoneManager extends MilestonesCategoryManager
 
 		info = midToSkillInfo.get(milestoneId);
 
-		// TODO: Get the real total level at this point somehow. It seems to lag behind by 1 level all the time
 		trueProgress = info.isLevelMilestone() ? getTotalLevel() : getTotalXP();
 		info.setTrueProgress(trueProgress);
 		updateMilestoneProgress(milestoneId, trueProgress);
