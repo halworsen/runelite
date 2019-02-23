@@ -28,6 +28,8 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
@@ -78,7 +80,7 @@ public class ItemMilestoneManager extends MilestonesCategoryManager
 	ItemMilestoneManager()
 	{
 		this.categoryName = "Items";
-		this.categoryMilestones = new HashMap<>();
+		this.categoryMilestones = new ArrayList<>();
 	}
 
 	@Override
@@ -128,17 +130,12 @@ public class ItemMilestoneManager extends MilestonesCategoryManager
 			return -1;
 		}
 
-		for (Milestone milestone : categoryMilestones.values())
+		for (int milestoneId : categoryMilestones)
 		{
-			if (milestone == null)
-			{
-				continue;
-			}
-
-			int milestoneItemId = milestoneItemIdMap.get(milestone.getId());
+			int milestoneItemId = milestoneItemIdMap.get(milestoneId);
 			if (milestoneItemId == itemId)
 			{
-				return milestone.getId();
+				return milestoneId;
 			}
 		}
 
@@ -168,7 +165,7 @@ public class ItemMilestoneManager extends MilestonesCategoryManager
 	{
 		final Gson gson = new Gson();
 
-		categoryMilestones = new HashMap<>();
+		categoryMilestones = new ArrayList<>();
 		previousInventory = new HashMap<>();
 
 		Map<Integer, Integer> storedMap = gson.fromJson(
@@ -181,7 +178,7 @@ public class ItemMilestoneManager extends MilestonesCategoryManager
 		{
 			for (int milestoneId : storedMap.keySet())
 			{
-				categoryMilestones.put(milestoneId, plugin.getMilestoneById(milestoneId));
+				categoryMilestones.add(milestoneId);
 			}
 
 			milestoneItemIdMap = storedMap;

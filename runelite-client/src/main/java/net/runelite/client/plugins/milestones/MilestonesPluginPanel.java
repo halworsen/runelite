@@ -212,7 +212,7 @@ public class MilestonesPluginPanel extends PluginPanel
 
 		panelContainer.add(contentContainer, CONTENT_PANEL);
 		panelContainer.add(notLoggedInWrapper, NOT_LOGGED_IN_PANEL);
-		panelCardLayout.show(panelContainer, CONTENT_PANEL);
+		panelCardLayout.show(panelContainer, NOT_LOGGED_IN_PANEL);
 
 		mainContainer.add(panelContainer, BorderLayout.CENTER);
 		add(mainContainer, BorderLayout.CENTER);

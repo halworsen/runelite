@@ -32,6 +32,6 @@ public class Milestone
 	private int id;
 	private String category;
 	private String name;
-	private int amount;
+	private int target;
 	private int progress;
 }

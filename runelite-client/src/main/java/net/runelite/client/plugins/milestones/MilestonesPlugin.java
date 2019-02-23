@@ -47,7 +47,6 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.milestones.items.ItemMilestoneManager;
-import net.runelite.client.plugins.milestones.quests.QuestMilestoneManager;
 import net.runelite.client.plugins.milestones.skills.SkillMilestoneManager;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
@@ -90,8 +89,8 @@ public class MilestonesPlugin extends Plugin
 	private ItemMilestoneManager itemMilestoneManager;
 	@Inject
 	private SkillMilestoneManager skillMilestoneManager;
-	@Inject
-	private QuestMilestoneManager questMilestoneManager;
+	//@Inject
+	//private QuestMilestoneManager questMilestoneManager;
 
 	@Provides
 	MilestonesConfig getConfig(ConfigManager configManager)
@@ -105,9 +104,9 @@ public class MilestonesPlugin extends Plugin
 		// Add each milestone category manager to the map of managers
 		milestoneCategories.put(itemMilestoneManager.getCategoryName(), itemMilestoneManager);
 		milestoneCategories.put(skillMilestoneManager.getCategoryName(), skillMilestoneManager);
-		milestoneCategories.put(questMilestoneManager.getCategoryName(), questMilestoneManager);
+		//milestoneCategories.put(questMilestoneManager.getCategoryName(), questMilestoneManager);
 
-		config.milestoneData("");
+		//config.milestoneData("");
 		// Register each manager to the event bus
 		for (MilestonesCategoryManager manager : milestoneCategories.values())
 		{
@@ -173,7 +172,7 @@ public class MilestonesPlugin extends Plugin
 		Milestone milestone = new Milestone();
 		milestone.setName(name);
 		milestone.setProgress(progress);
-		milestone.setAmount(amount);
+		milestone.setTarget(amount);
 		milestone.setId(nextMilestoneId);
 
 		userMilestones.add(milestone);
@@ -189,46 +188,40 @@ public class MilestonesPlugin extends Plugin
 	*/
 	public void progressMilestone(int milestoneId, int amount)
 	{
-		for (Milestone milestone : userMilestones)
-		{
-			if (milestone.getId() == milestoneId)
-			{
-				int newProgress = Math.min(milestone.getProgress() + amount, milestone.getAmount());
-				milestone.setProgress(newProgress);
-				break;
-			}
-		}
+		Milestone milestone = getMilestoneById(milestoneId);
+
+		int newProgress = Math.min(milestone.getProgress() + amount, milestone.getTarget());
+		milestone.setProgress(newProgress);
 
 		SwingUtilities.invokeLater(() -> pluginPanel.rebuildMilestones());
 	}
 
 	public void updateMilestone(int milestoneId, String name, int progress, int amount)
 	{
-		for (Milestone milestone : userMilestones)
-		{
-			if (milestone.getId() == milestoneId)
-			{
-				milestone.setName(name);
-				milestone.setAmount(amount);
-				milestone.setProgress(progress);
-				break;
-			}
-		}
+		Milestone milestone = getMilestoneById(milestoneId);
+
+		milestone.setName(name);
+		milestone.setTarget(amount);
+		milestone.setProgress(progress);
 
 		SwingUtilities.invokeLater(() -> pluginPanel.rebuildMilestones());
 	}
 
 	public void updateMilestone(int milestoneId, int progress, int amount)
 	{
-		for (Milestone milestone : userMilestones)
-		{
-			if (milestone.getId() == milestoneId)
-			{
-				milestone.setAmount(amount);
-				milestone.setProgress(progress);
-				break;
-			}
-		}
+		Milestone milestone = getMilestoneById(milestoneId);
+
+		milestone.setTarget(amount);
+		milestone.setProgress(progress);
+
+		SwingUtilities.invokeLater(() -> pluginPanel.rebuildMilestones());
+	}
+
+	public void updateMilestoneProgress(int milestoneId, int progress)
+	{
+		Milestone milestone = getMilestoneById(milestoneId);
+
+		milestone.setProgress(progress);
 
 		SwingUtilities.invokeLater(() -> pluginPanel.rebuildMilestones());
 	}

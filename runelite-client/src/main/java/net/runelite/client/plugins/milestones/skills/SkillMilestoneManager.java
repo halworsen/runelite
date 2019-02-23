@@ -6,7 +6,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
-import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import javax.swing.ImageIcon;
@@ -15,12 +15,13 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Experience;
 import net.runelite.api.Skill;
+import net.runelite.api.events.ExperienceChanged;
+import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.AsyncBufferedImage;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.plugins.milestones.MilestonesCategoryManager;
 import net.runelite.client.plugins.milestones.MilestonesPlugin;
 
-// TODO: track the progress towards skill goals
 @Singleton
 @Slf4j
 public class SkillMilestoneManager extends MilestonesCategoryManager
@@ -35,14 +36,13 @@ public class SkillMilestoneManager extends MilestonesCategoryManager
 
 	private SkillMilestoneEditPanel editPanel;
 
-	private Map<Integer, Skill> milestoneSkillMap = new HashMap<>();
-	// Holds the XP progress/goal for the milestones
-	private Map<Integer, Map.Entry<Integer, Integer>> trueMilestones = new HashMap<>();
+	// Maps milestone IDs to skill info
+	private Map<Integer, SkillMilestoneInfo> midToSkillInfo = new HashMap<>();
 
 	SkillMilestoneManager()
 	{
 		this.categoryName = "Skills";
-		this.categoryMilestones = new HashMap<>();
+		this.categoryMilestones = new ArrayList<>();
 	}
 
 	@Override
@@ -75,7 +75,7 @@ public class SkillMilestoneManager extends MilestonesCategoryManager
 	@Override
 	public AsyncBufferedImage getIcon(int milestoneId)
 	{
-		Skill skill = milestoneSkillMap.get(milestoneId);
+		Skill skill = midToSkillInfo.get(milestoneId).getSkill();
 		ImageIcon skillIcon = new ImageIcon(iconManager.getSkillImage(skill, true));
 
 		// Convert the skill icon to an AsyncBufferedImage
@@ -91,9 +91,50 @@ public class SkillMilestoneManager extends MilestonesCategoryManager
 		return bufferedImage;
 	}
 
-	protected int getRealTarget(int milestoneId)
+	protected int getTrueTarget(int milestoneId)
 	{
-		return trueMilestones.get(milestoneId).getValue();
+		return midToSkillInfo.get(milestoneId).getTrueTarget();
+	}
+
+	protected int getTotalXP()
+	{
+		int prevTotal = 0;
+		int total = 0;
+		for (Skill skill : Skill.values())
+		{
+			if (skill == Skill.OVERALL)
+			{
+				continue;
+			}
+
+			total += client.getSkillExperience(skill);
+			// TODO: Max XP is greater than the max size of an integer, which can cause overflows. This category needs a larger rewrite to use longs
+			if (total < prevTotal)
+			{
+				return Integer.MAX_VALUE;
+			}
+
+			prevTotal = total;
+		}
+
+		return total;
+	}
+
+	// The client can report wrong total levels (i.e. right after a XP change that resulted in a level up). Funnily enough it doesn't report wrong XP
+	private int getTotalLevel()
+	{
+		int total = 0;
+		for (Skill skill : Skill.values())
+		{
+			if (skill == Skill.OVERALL)
+			{
+				continue;
+			}
+
+			total += Experience.getLevelForXp(client.getSkillExperience(skill));
+		}
+
+		return total;
 	}
 
 	protected int getMilestoneBySkill(Skill skill)
@@ -103,9 +144,9 @@ public class SkillMilestoneManager extends MilestonesCategoryManager
 			return -1;
 		}
 
-		for (Map.Entry<Integer, Skill> entry : milestoneSkillMap.entrySet())
+		for (Map.Entry<Integer, SkillMilestoneInfo> entry : midToSkillInfo.entrySet())
 		{
-			if (entry.getValue() == skill)
+			if (entry.getValue().getSkill() == skill)
 			{
 				return entry.getKey();
 			}
@@ -116,34 +157,59 @@ public class SkillMilestoneManager extends MilestonesCategoryManager
 
 	protected boolean hasMilestoneForSkill(Skill skill)
 	{
-		return milestoneSkillMap.containsValue(skill);
+		for (Map.Entry<Integer, SkillMilestoneInfo> entry : midToSkillInfo.entrySet())
+		{
+			if (entry.getValue().getSkill() == skill)
+			{
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private String getMilestoneName(Skill skill, boolean isLevelMilestone)
 	{
-		return skill.getName() + " " + (isLevelMilestone ? "level" : "XP");
+		String skillName = skill == Skill.OVERALL ? "Total" : skill.getName();
+		return skillName + " " + (isLevelMilestone ? "level" : "XP");
 	}
 
+	// TODO: (bug) something goes horribly wrong when you add new milestones on top of old ones?
 	protected int addNewMilestone(Skill skill, int amount, boolean isLevelMilestone)
 	{
-		int realProgress = client.getSkillExperience(skill);
-		int milestoneProgress = realProgress;
+		SkillMilestoneInfo info = new SkillMilestoneInfo();
+		info.setSkill(skill);
+		info.setTrueTarget(amount);
+		info.setLevelMilestone(isLevelMilestone);
+
+		String milestoneName = getMilestoneName(skill, isLevelMilestone);
+
+		// Total level/XP is handled separately
+		if (skill == Skill.OVERALL)
+		{
+			int progress = isLevelMilestone ? client.getTotalLevel() : getTotalXP();
+			info.setTrueProgress(progress);
+
+			int milestoneId = addNewMilestone(milestoneName, progress, amount);
+			midToSkillInfo.put(milestoneId, info);
+
+			return milestoneId;
+		}
+
+		int trueProgress = client.getSkillExperience(skill);
+		int milestoneProgress = trueProgress;
 		int milestoneAmount = amount;
 
 		if (isLevelMilestone)
 		{
-			milestoneProgress = Experience.getLevelForXp(realProgress);
+			milestoneProgress = Experience.getLevelForXp(trueProgress);
 			milestoneAmount = Experience.getLevelForXp(amount);
 		}
 
-		String milestoneName = getMilestoneName(skill, isLevelMilestone);
 		int milestoneId = addNewMilestone(milestoneName, milestoneProgress, milestoneAmount);
-
-		// Store the milestone XP progress/goal
-		Map.Entry<Integer, Integer> trueMilestone = new AbstractMap.SimpleEntry<>(realProgress, amount);
-		trueMilestones.put(milestoneId, trueMilestone);
-
-		milestoneSkillMap.put(milestoneId, skill);
+		// Store experience progress
+		info.setTrueProgress(trueProgress);
+		midToSkillInfo.put(milestoneId, info);
 
 		return milestoneId;
 	}
@@ -155,22 +221,38 @@ public class SkillMilestoneManager extends MilestonesCategoryManager
 			throw new IllegalStateException("Attempt to update milestone not belonging by the skills category");
 		}
 
-		Skill skill = milestoneSkillMap.get(milestoneId);
+		Skill skill = midToSkillInfo.get(milestoneId).getSkill();
+		SkillMilestoneInfo info = midToSkillInfo.get(milestoneId);
+		info.setTrueTarget(amount);
+		info.setLevelMilestone(isLevelMilestone);
 
-		int realProgress = client.getSkillExperience(skill);
-		int milestoneProgress = realProgress;
+		String milestoneName = getMilestoneName(skill, isLevelMilestone);
+
+		if (skill == Skill.OVERALL)
+		{
+			int progress = isLevelMilestone ? client.getTotalLevel() : getTotalXP();
+			info.setTrueProgress(progress);
+			updateMilestone(milestoneId, milestoneName, progress, amount);
+
+			return;
+		}
+
+		int trueProgress = client.getSkillExperience(skill);
+		int milestoneProgress = trueProgress;
 		int milestoneAmount = amount;
 		if (isLevelMilestone)
 		{
-			milestoneProgress = Experience.getLevelForXp(realProgress);
+			milestoneProgress = Experience.getLevelForXp(trueProgress);
 			milestoneAmount = Experience.getLevelForXp(amount);
 		}
 
-		Map.Entry<Integer, Integer> trueMilestone = new AbstractMap.SimpleEntry<>(realProgress, amount);
-		trueMilestones.put(milestoneId, trueMilestone);
-
-		String milestoneName = getMilestoneName(skill, isLevelMilestone);
+		info.setTrueProgress(trueProgress);
 		updateMilestone(milestoneId, milestoneName, milestoneProgress, milestoneAmount);
+	}
+
+	private void updateMilestoneProgress(int milestoneId, int progress)
+	{
+		plugin.updateMilestoneProgress(milestoneId, progress);
 	}
 
 	@Override
@@ -178,39 +260,71 @@ public class SkillMilestoneManager extends MilestonesCategoryManager
 	{
 		super.removeMilestone(milestoneId);
 
-		milestoneSkillMap.remove(milestoneId);
+		midToSkillInfo.remove(milestoneId);
 	}
 
 	public String getSaveData()
 	{
 		final Gson gson = new Gson();
 
-		Map<String, Map> milestoneMaps = new HashMap<>();
-		milestoneMaps.put("skills", milestoneSkillMap);
-		milestoneMaps.put("truemilestones", trueMilestones);
-
-		return gson.toJson(milestoneMaps);
+		return gson.toJson(midToSkillInfo);
 	}
 
 	public void loadSaveData(String data)
 	{
-		milestoneSkillMap = new HashMap<>();
-		trueMilestones = new HashMap<>();
+		midToSkillInfo = new HashMap<>();
+		categoryMilestones = new ArrayList<>();
 
 		final Gson gson = new Gson();
 
-		Map<String, Map> storedMaps = gson.fromJson(
+		Map<Integer, SkillMilestoneInfo> storedInfo = gson.fromJson(
 				data,
-				new TypeToken<Map<String, Map>>()
+				new TypeToken<Map<Integer, SkillMilestoneInfo>>()
 				{ }.getType()
 		);
 
-		Map<String, String> skillsData = storedMaps.get("skills");
-		for (Map.Entry<String, String> entry : skillsData.entrySet())
+		if (storedInfo != null)
 		{
-			milestoneSkillMap.put(Integer.parseInt(entry.getKey()), Skill.valueOf(entry.getValue()));
+			midToSkillInfo = storedInfo;
+
+			for (int milestoneId : storedInfo.keySet())
+			{
+				categoryMilestones.add(milestoneId);
+			}
 		}
-		trueMilestones = storedMaps.get("truemilestones");
 	}
 
+	@Subscribe
+	public void onExperienceChanged(ExperienceChanged event)
+	{
+		final Skill skill = event.getSkill();
+
+		int milestoneId = getMilestoneBySkill(skill);
+		if (milestoneId == -1)
+		{
+			return;
+		}
+
+		SkillMilestoneInfo info = midToSkillInfo.get(milestoneId);
+
+		int trueProgress = client.getSkillExperience(skill);
+		int milestoneProgress = info.isLevelMilestone() ? Experience.getLevelForXp(trueProgress) : trueProgress;
+
+		info.setTrueProgress(trueProgress);
+		updateMilestoneProgress(milestoneId, milestoneProgress);
+
+		// Update total skill milestone
+		milestoneId = getMilestoneBySkill(Skill.OVERALL);
+		if (milestoneId == -1)
+		{
+			return;
+		}
+
+		info = midToSkillInfo.get(milestoneId);
+
+		// TODO: Get the real total level at this point somehow. It seems to lag behind by 1 level all the time
+		trueProgress = info.isLevelMilestone() ? getTotalLevel() : getTotalXP();
+		info.setTrueProgress(trueProgress);
+		updateMilestoneProgress(milestoneId, trueProgress);
+	}
 }

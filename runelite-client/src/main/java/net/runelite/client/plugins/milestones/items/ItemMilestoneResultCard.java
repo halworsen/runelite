@@ -36,6 +36,7 @@ import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import java.util.Collection;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
@@ -182,16 +183,10 @@ public class ItemMilestoneResultCard extends JPanel
 	// If there is an active milestone for this item, we store it
 	private void findConnectedMilestone()
 	{
-		Collection<Milestone> milestones = manager.getCategoryMilestones();
+		ArrayList<Integer> milestones = manager.getCategoryMilestones();
 
-		for (Milestone milestone : milestones)
+		for (int milestoneId : milestones)
 		{
-			if (milestone == null)
-			{
-				continue;
-			}
-
-			int milestoneId = milestone.getId();
 			if (manager.getMilestoneItemId(milestoneId) == itemId)
 			{
 				connectedMilestone = milestoneId;
@@ -213,7 +208,7 @@ public class ItemMilestoneResultCard extends JPanel
 
 			// Progress bar
 			ThinProgressBar progressBar = new ThinProgressBar();
-			if (milestone.getProgress() == milestone.getAmount())
+			if (milestone.getProgress() == milestone.getTarget())
 			{
 				progressBar.setForeground(ColorScheme.PROGRESS_COMPLETE_COLOR);
 			}
@@ -221,7 +216,7 @@ public class ItemMilestoneResultCard extends JPanel
 			{
 				progressBar.setForeground(ColorScheme.PROGRESS_INPROGRESS_COLOR);
 			}
-			progressBar.setMaximumValue(milestone.getAmount());
+			progressBar.setMaximumValue(milestone.getTarget());
 			progressBar.setValue(milestone.getProgress());
 
 			resultContainer.add(progressBar, BorderLayout.PAGE_END);
@@ -237,7 +232,7 @@ public class ItemMilestoneResultCard extends JPanel
 		if (hasConnectedMilestone())
 		{
 			Milestone milestone = manager.getMilestone(connectedMilestone);
-			amountSpinner.setValue(milestone.getAmount());
+			amountSpinner.setValue(milestone.getTarget());
 		}
 
 		JShadowedLabel amountLabel = new JShadowedLabel();
@@ -311,7 +306,7 @@ public class ItemMilestoneResultCard extends JPanel
 	{
 		if (hasConnectedMilestone())
 		{
-			// Updated milestone amount
+			// Updated milestone target
 			int newMilestone = (int)amountSpinner.getValue();
 			// If the milestone is adjusted downwards below the progress, cap progress at the new milestone
 			Milestone milestone = manager.getMilestone(connectedMilestone);

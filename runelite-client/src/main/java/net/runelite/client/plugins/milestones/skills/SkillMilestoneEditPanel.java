@@ -6,6 +6,7 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
+import java.util.stream.IntStream;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -139,7 +140,7 @@ public class SkillMilestoneEditPanel extends JPanel
 		{
 			buttonText = "Update milestone";
 
-			int target = manager.getRealTarget(milestoneId);
+			int target = manager.getTrueTarget(milestoneId);
 			if (levelSelected())
 			{
 				target = Experience.getLevelForXp(target);
@@ -162,8 +163,9 @@ public class SkillMilestoneEditPanel extends JPanel
 				return target;
 			}
 
-			if (levelSelected())
+			if (levelSelected() && selectedSkill != Skill.OVERALL)
 			{
+
 				target = Experience.getXpForLevel(Math.max(1, target));
 			}
 
@@ -179,6 +181,14 @@ public class SkillMilestoneEditPanel extends JPanel
 	{
 		int maxTarget = levelSelected() ? Experience.MAX_VIRT_LEVEL : Experience.MAX_SKILL_XP;
 		int minTarget = levelSelected() ? client.getRealSkillLevel(selectedSkill) : client.getSkillExperience(selectedSkill);
+
+		if (selectedSkill == Skill.OVERALL)
+		{
+			// Would use the absolute max of 4,600,000,000, but that's larger than an int
+			maxTarget = levelSelected() ? Experience.MAX_TOTAL_LEVEL : Experience.MAX_TOTAL_LEVEL_XP;
+			minTarget = levelSelected() ? client.getTotalLevel() : manager.getTotalXP();
+		}
+
 		// Clamp the target
 		int target = Math.min(maxTarget, Math.max(minTarget, getSkillTarget(true)));
 

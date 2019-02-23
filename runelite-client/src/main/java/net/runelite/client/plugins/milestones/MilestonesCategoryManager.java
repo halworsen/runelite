@@ -25,6 +25,7 @@
 package net.runelite.client.plugins.milestones;
 
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -50,8 +51,9 @@ public abstract class MilestonesCategoryManager
 	// Should be human readable. This is displayed on the collapsible panel header in the edit tab
 	@Getter(AccessLevel.PUBLIC)
 	protected String categoryName = "invalidcategory";
-	// Holds all the milestones tied to this category
-	protected Map<Integer, Milestone> categoryMilestones = new HashMap<>();
+	// Holds all the milestone ids tied to this category
+	@Getter
+	protected ArrayList<Integer> categoryMilestones = new ArrayList<>();
 	private ImageIcon defaultIcon = new ImageIcon(MilestonesPlugin.class.getResource("unknown_category.png"));
 
 	// This should return the panel to be shown in the edit tab for the category
@@ -84,12 +86,7 @@ public abstract class MilestonesCategoryManager
 
 	public boolean containsMilestone(int milestoneId)
 	{
-		return categoryMilestones.containsKey(milestoneId);
-	}
-
-	public boolean containsMilestone(Milestone milestone)
-	{
-		return categoryMilestones.containsValue(milestone);
+		return categoryMilestones.contains(milestoneId);
 	}
 
 	// All milestone creation/updates/removals should go through the manager
@@ -100,14 +97,14 @@ public abstract class MilestonesCategoryManager
 		Milestone milestone = plugin.getMilestoneById(milestoneId);
 		milestone.setCategory(categoryName);
 
-		categoryMilestones.put(milestoneId, milestone);
+		categoryMilestones.add(milestoneId);
 
 		return milestoneId;
 	}
 
 	protected void progressMilestone(int milestoneId, int amount)
 	{
-		if (!categoryMilestones.containsKey(milestoneId))
+		if (!categoryMilestones.contains(milestoneId))
 		{
 			throw new IllegalArgumentException("Attempt to progress milestone #" + milestoneId + " in the " + getCategoryName() + " category, but this milestone was never tracked by the category manager!");
 		}
@@ -128,20 +125,15 @@ public abstract class MilestonesCategoryManager
 
 	protected void removeMilestone(int milestoneId)
 	{
-		if (!categoryMilestones.containsKey(milestoneId))
+		if (!categoryMilestones.contains(milestoneId))
 		{
 			throw new IllegalArgumentException("Attempt to remove milestone #" + milestoneId + " in the " + getCategoryName() + " category, but this milestone was never tracked by the category manager!");
 		}
 
 		plugin.removeMilestone(milestoneId);
 
-		categoryMilestones.remove(milestoneId);
-	}
 
-	// This should only return milestones relevant to the category, i.e. only item milestones for the item category
-	public Collection<Milestone> getCategoryMilestones()
-	{
-		return categoryMilestones.values();
+		categoryMilestones.remove((Integer)milestoneId);
 	}
 
 	// This is called on rebuildMilestones() in the plugin panel and should rebuild the edit panel if it depends on milestone data

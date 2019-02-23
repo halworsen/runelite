@@ -146,13 +146,13 @@ public class MilestonesMilestoneCard extends JPanel
 		itemName.setPreferredSize(new Dimension(0, h));
 		itemName.setForeground(Color.WHITE);
 
-		// "Progress / goal amount" label
+		// "Progress / goal target" label
 		JShadowedLabel itemProgressLabel = new JShadowedLabel();
 		itemProgressLabel.setFont(FontManager.getRunescapeSmallFont());
 
 		NumberFormat formatter = NumberFormat.getInstance();
 		// Progress can be negative, but I think it'd be more confusing if you dropped below 0 progress and making small progress wouldn't increase the progress beyond 0
-		String progressText = formatter.format(milestone.getProgress()) + " / " + formatter.format(milestone.getAmount());
+		String progressText = formatter.format(milestone.getProgress()) + " / " + formatter.format(milestone.getTarget());
 
 		itemProgressLabel.setText(progressText);
 		itemProgressLabel.setForeground(Color.WHITE);
@@ -162,7 +162,8 @@ public class MilestonesMilestoneCard extends JPanel
 
 		// Progress bar
 		ThinProgressBar progressBar = new ThinProgressBar();
-		if (milestone.getProgress() == milestone.getAmount())
+		int clampedProgress = Math.min(milestone.getProgress(), milestone.getTarget());
+		if (clampedProgress == milestone.getTarget())
 		{
 			progressBar.setForeground(ColorScheme.PROGRESS_COMPLETE_COLOR);
 		}
@@ -170,8 +171,8 @@ public class MilestonesMilestoneCard extends JPanel
 		{
 			progressBar.setForeground(ColorScheme.PROGRESS_INPROGRESS_COLOR);
 		}
-		progressBar.setMaximumValue(milestone.getAmount());
-		progressBar.setValue(milestone.getProgress());
+		progressBar.setMaximumValue(milestone.getTarget());
+		progressBar.setValue(clampedProgress);
 
 		// Delete button
 		JLabel deleteButton = new JLabel(DELETE_ICON);
