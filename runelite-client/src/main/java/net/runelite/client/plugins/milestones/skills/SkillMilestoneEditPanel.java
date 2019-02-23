@@ -250,4 +250,12 @@ public class SkillMilestoneEditPanel extends JPanel
 
 		return container;
 	}
+
+	protected void reset()
+	{
+		tabGroup.select(null);
+		targetInput.setText("");
+		updateMilestoneButton.setText("Select a skill");
+		updateMilestoneButton.setEnabled(false);
+	}
 }

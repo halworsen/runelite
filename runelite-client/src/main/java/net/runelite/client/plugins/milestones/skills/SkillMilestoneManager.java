@@ -62,14 +62,15 @@ public class SkillMilestoneManager extends MilestonesCategoryManager
 		return false;
 	}
 
+	// Edit panel doesn't have anything that needs to rebuild
 	public void rebuildEditPanel()
 	{
-
+		return;
 	}
 
 	public void resetEditPanel()
 	{
-
+		editPanel.reset();
 	}
 
 	@Override

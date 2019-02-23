@@ -48,6 +48,12 @@ public class Experience
 	public static final int MAX_SKILL_XP = 200_000_000;
 
 	/**
+	 * The maximum total skill level (299,791,913 experience).
+	 */
+	public static final int MAX_TOTAL_LEVEL = 2277;
+	public static final int MAX_TOTAL_LEVEL_XP = 299_791_913;
+
+	/**
 	 * The maximum possible combat level.
 	 */
 	public static final int MAX_COMBAT_LEVEL = 126;
